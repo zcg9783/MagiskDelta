@@ -219,7 +219,9 @@ def run_ndk_build(flags):
 
 def run_cargo_build(args):
     header('* Initializing submodules')
-    execv(['git', 'submodule', 'update', '--init', '--recursive'])
+    proc = execv(['git', 'submodule', 'update', '--init', '--recursive'])
+    if proc.returncode != 0:
+        error('Submodule initialization failed!')
     
     os.chdir(op.join('native', 'src'))
     targets = set(args.target) & set(rust_targets)
@@ -229,9 +231,14 @@ def run_cargo_build(args):
     env = os.environ.copy()
     env['CARGO_BUILD_RUSTC'] = op.join(rust_bin, 'rustc' + EXE_EXT)
 
-    cxx_src = op.join('external', 'cxx-rs', 'gen', 'cmd')
+    cxx_base = op.join('external', 'cxx-rs')
+    if not op.exists(cxx_base):
+        error(f'cxx-rs submodule not found at {op.join("native", "src", "external", "cxx-rs")}')
+    
+    cxx_src = op.join(cxx_base, 'cxxbridge', 'cmd')
     if not op.exists(cxx_src):
-        error(f'cxx-rs not found at {cxx_src}. Make sure submodules are initialized.')
+        error(f'cxxbridge-cmd not found at {cxx_src}')
+
     native_out = op.join('..', 'out')
     local_cargo_root = op.join(native_out, '.cargo')
     cfg = op.join('.cargo', 'config.toml')
@@ -249,6 +256,7 @@ def run_cargo_build(args):
     finally:
         if op.exists(cfg_bak):
             mv(cfg_bak, cfg)
+    
     cxxbridge = op.join(local_cargo_root, 'bin', 'cxxbridge' + EXE_EXT)
     mkdir(native_gen_path)
     for p in ['base', 'boot', 'core', 'init', 'sepolicy']:
@@ -257,7 +265,6 @@ def run_cargo_build(args):
         text = cmd_out([cxxbridge, '--header', op.join(p, 'lib.rs')])
         write_if_diff(op.join(native_gen_path, f'{p}-rs.hpp'), text)
 
-    # Start building the actual build commands
     cmds = [cargo, 'build', '-Z', 'build-std=std,panic_abort',
            '-Z', 'build-std-features=panic_immediate_abort']
     for target in targets:
@@ -289,7 +296,6 @@ def run_cargo_build(args):
             mv(source, target)
 
     os.chdir(op.join('..', '..'))
-
 
 def write_if_diff(file_name, text):
     do_write = True
