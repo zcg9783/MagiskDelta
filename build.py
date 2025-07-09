@@ -218,6 +218,9 @@ def run_ndk_build(flags):
 
 
 def run_cargo_build(args):
+    header('* Initializing submodules')
+    execv(['git', 'submodule', 'update', '--init', '--recursive'])
+    
     os.chdir(op.join('native', 'src'))
     targets = set(args.target) & set(rust_targets)
     if 'resetprop' in args.target:
@@ -226,15 +229,16 @@ def run_cargo_build(args):
     env = os.environ.copy()
     env['CARGO_BUILD_RUSTC'] = op.join(rust_bin, 'rustc' + EXE_EXT)
 
-    # Install cxxbridge and generate C++ bindings
+    cxx_src = op.join('external', 'cxx-rs', 'gen', 'cmd')
+    if not op.exists(cxx_src):
+        error(f'cxx-rs not found at {cxx_src}. Make sure submodules are initialized.')
     native_out = op.join('..', 'out')
     local_cargo_root = op.join(native_out, '.cargo')
     cfg = op.join('.cargo', 'config.toml')
     cfg_bak = op.join('.cargo', 'config.toml.bak')
     try:
-        # Hide the config file for cargo install
-        mv(cfg, cfg_bak)
-        cxx_src = op.join('external', 'cxx-rs', 'gen', 'cmd')
+        if op.exists(cfg):
+            mv(cfg, cfg_bak)
         mkdir_p(local_cargo_root)
         cmds = [cargo, 'install', '--root', local_cargo_root, '--path', cxx_src]
         if not args.verbose:
@@ -243,8 +247,8 @@ def run_cargo_build(args):
         if proc.returncode != 0:
             error('cxxbridge-cmd installation failed!')
     finally:
-        # Make sure the config file rename is always reverted
-        mv(cfg_bak, cfg)
+        if op.exists(cfg_bak):
+            mv(cfg_bak, cfg)
     cxxbridge = op.join(local_cargo_root, 'bin', 'cxxbridge' + EXE_EXT)
     mkdir(native_gen_path)
     for p in ['base', 'boot', 'core', 'init', 'sepolicy']:
