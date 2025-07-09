@@ -469,7 +469,7 @@ def setup_ndk(args):
 
     header(f'* Downloading and extracting {ndk_archive}')
     with urllib.request.urlopen(url) as response:
-        with tarfile.open(mode='r|gz', fileobj=response) as tar:
+        with tarfile.open(mode='r|xz', fileobj=response) as tar:
             tar.extractall(ndk_root)
 
     rm_rf(ndk_path)
