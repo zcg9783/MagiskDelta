@@ -464,7 +464,7 @@ def cleanup(args):
 def setup_ndk(args):
     os_name = platform.system().lower()
     ndk_ver = config['ondkVersion']
-    url = f'https://github.com/topjohnwu/ondk/releases/download/{ndk_ver}/ondk-{ndk_ver}-{os_name}.tar.gz'
+    url = f'https://github.com/topjohnwu/ondk/releases/download/{ndk_ver}/ondk-{ndk_ver}-{os_name}.tar.xz'
     ndk_archive = url.split('/')[-1]
 
     header(f'* Downloading and extracting {ndk_archive}')
